@@ -175,6 +175,11 @@
         let currentLevel = 1;
         let differentSquareIndex = 0;
         let gameCompleted = false;
+        let errorCount = 0;
+        let maxErrors = 10;
+        let currentDifference = 30;
+        let testResults = []; // Массив для хранения результатов каждого уровня
+        let consecutiveCorrect = 0; // Счетчик правильных ответов подряд
 
         const grid = document.getElementById('grid');
         const levelElement = document.getElementById('level');
@@ -198,7 +203,7 @@
         }
 
         function generateLevel() {
-            if (currentLevel > 50) {
+            if (currentLevel > 50 || errorCount >= maxErrors) {
                 completeGame();
                 return;
             }
@@ -206,49 +211,42 @@
             // Очищаем сетку
             grid.innerHTML = '';
             
-            // Генерируем базовый цвет с учетом более равномерного восприятия
-            const baseR = 80 + Math.floor(Math.random() * 96); // 80-175
-            const baseG = 80 + Math.floor(Math.random() * 96); // 80-175
-            const baseB = 80 + Math.floor(Math.random() * 96); // 80-175
+            // Генерируем базовый цвет
+            const baseR = 80 + Math.floor(Math.random() * 96);
+            const baseG = 80 + Math.floor(Math.random() * 96);
+            const baseB = 80 + Math.floor(Math.random() * 96);
             const baseColor = rgbToHex(baseR, baseG, baseB);
             
-            // Прогрессивное уменьшение разности
-            let difference;
-            if (currentLevel <= 20) {
-                // Первые 20 уровней: от 30 до 15
-                difference = Math.round(30 - ((currentLevel - 1) / 19) * 15);
-            } else if (currentLevel <= 35) {
-                // Уровни 21-35: от 15 до 8
-                difference = Math.round(15 - ((currentLevel - 21) / 14) * 7);
-            } else {
-                // Последние 15 уровней: от 8 до 2
-                difference = Math.round(8 - ((currentLevel - 36) / 14) * 6);
+            // Логика адаптивного изменения сложности
+            // Если 3 правильных ответа подряд - уменьшаем разность
+            if (consecutiveCorrect >= 3 && currentDifference > 2) {
+                currentDifference = Math.max(2, currentDifference - 2);
+                consecutiveCorrect = 0;
             }
             
             // Определяем, какой квадрат будет отличаться
             differentSquareIndex = Math.floor(Math.random() * 9);
             
-            // Логика изменения каналов в зависимости от уровня
+            // Логика изменения каналов в зависимости от текущей сложности
             let diffR = baseR;
             let diffG = baseG;
             let diffB = baseB;
             
-            if (currentLevel <= 30) {
-                // Уровни 1-30: изменяем все три канала
+            if (currentDifference >= 15) {
+                // Легкий уровень: изменяем все три канала
                 const directionR = Math.random() < 0.5 ? 1 : -1;
                 const directionG = Math.random() < 0.5 ? 1 : -1;
                 const directionB = Math.random() < 0.5 ? 1 : -1;
                 
-                diffR = Math.max(20, Math.min(235, baseR + (difference * directionR)));
-                diffG = Math.max(20, Math.min(235, baseG + (difference * directionG)));
-                diffB = Math.max(20, Math.min(235, baseB + (difference * directionB)));
+                diffR = Math.max(20, Math.min(235, baseR + (currentDifference * directionR)));
+                diffG = Math.max(20, Math.min(235, baseG + (currentDifference * directionG)));
+                diffB = Math.max(20, Math.min(235, baseB + (currentDifference * directionB)));
                 
-            } else if (currentLevel <= 42) {
-                // Уровни 31-42: изменяем два канала
-                const channels = [0, 1, 2]; // R, G, B
+            } else if (currentDifference >= 8) {
+                // Средний уровень: изменяем два канала
+                const channels = [0, 1, 2];
                 const selectedChannels = [];
                 
-                // Выбираем два случайных канала
                 for (let i = 0; i < 2; i++) {
                     const randomIndex = Math.floor(Math.random() * channels.length);
                     selectedChannels.push(channels[randomIndex]);
@@ -258,29 +256,40 @@
                 selectedChannels.forEach(channel => {
                     const direction = Math.random() < 0.5 ? 1 : -1;
                     if (channel === 0) {
-                        diffR = Math.max(20, Math.min(235, baseR + (difference * direction)));
+                        diffR = Math.max(20, Math.min(235, baseR + (currentDifference * direction)));
                     } else if (channel === 1) {
-                        diffG = Math.max(20, Math.min(235, baseG + (difference * direction)));
+                        diffG = Math.max(20, Math.min(235, baseG + (currentDifference * direction)));
                     } else {
-                        diffB = Math.max(20, Math.min(235, baseB + (difference * direction)));
+                        diffB = Math.max(20, Math.min(235, baseB + (currentDifference * direction)));
                     }
                 });
                 
             } else {
-                // Уровни 43-50: изменяем один канал (самое сложное)
+                // Сложный уровень: изменяем один канал
                 const colorChannel = Math.floor(Math.random() * 3);
                 const direction = Math.random() < 0.5 ? 1 : -1;
                 
                 if (colorChannel === 0) {
-                    diffR = Math.max(20, Math.min(235, baseR + (difference * direction)));
+                    diffR = Math.max(20, Math.min(235, baseR + (currentDifference * direction)));
                 } else if (colorChannel === 1) {
-                    diffG = Math.max(20, Math.min(235, baseG + (difference * direction)));
+                    diffG = Math.max(20, Math.min(235, baseG + (currentDifference * direction)));
                 } else {
-                    diffB = Math.max(20, Math.min(235, baseB + (difference * direction)));
+                    diffB = Math.max(20, Math.min(235, baseB + (currentDifference * direction)));
                 }
             }
             
             const differentColor = rgbToHex(diffR, diffG, diffB);
+            
+            // Сохраняем данные для результатов
+            const levelData = {
+                level: currentLevel,
+                baseColor: baseColor,
+                differentColor: differentColor,
+                difference: currentDifference,
+                baseRGB: {r: baseR, g: baseG, b: baseB},
+                diffRGB: {r: diffR, g: diffG, b: diffB},
+                success: null // будет заполнено после ответа
+            };
             
             // Создаем квадраты
             for (let i = 0; i < 9; i++) {
@@ -293,13 +302,13 @@
                     square.style.backgroundColor = baseColor;
                 }
                 
-                square.addEventListener('click', () => handleSquareClick(i));
+                square.addEventListener('click', () => handleSquareClick(i, levelData));
                 grid.appendChild(square);
             }
             
             // Обновляем интерфейс
             levelElement.textContent = currentLevel;
-            messageElement.textContent = 'Кликните на отличающийся квадрат';
+            messageElement.textContent = `Ошибок: ${errorCount}/${maxErrors} | Различие: ${currentDifference}`;
             messageElement.className = 'message';
             
             // Обновляем прогресс-бар
@@ -307,11 +316,15 @@
             progressBar.style.width = progress + '%';
         }
 
-        function handleSquareClick(index) {
+        function handleSquareClick(index, levelData) {
             if (gameCompleted) return;
             
             if (index === differentSquareIndex) {
                 // Правильный ответ
+                levelData.success = true;
+                testResults.push(levelData);
+                consecutiveCorrect++;
+                
                 messageElement.textContent = '✅ Правильно!';
                 messageElement.className = 'message success';
                 
@@ -323,7 +336,12 @@
                 
             } else {
                 // Неправильный ответ
-                messageElement.textContent = '❌ Попробуйте еще раз';
+                levelData.success = false;
+                testResults.push(levelData);
+                errorCount++;
+                consecutiveCorrect = 0;
+                
+                messageElement.textContent = `❌ Ошибка ${errorCount}/${maxErrors}`;
                 messageElement.className = 'message error';
                 
                 // Подсветим правильный квадрат
@@ -331,26 +349,168 @@
                 squares[differentSquareIndex].style.border = '3px solid #ffeb3b';
                 squares[differentSquareIndex].style.boxShadow = '0 0 20px #ffeb3b';
                 
-                setTimeout(() => {
-                    squares[differentSquareIndex].style.border = '3px solid transparent';
-                    squares[differentSquareIndex].style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-                    messageElement.textContent = 'Кликните на отличающийся квадрат';
-                    messageElement.className = 'message';
-                }, 2000);
+                if (errorCount >= maxErrors) {
+                    setTimeout(() => {
+                        completeGame();
+                    }, 2000);
+                } else {
+                    setTimeout(() => {
+                        squares[differentSquareIndex].style.border = '3px solid transparent';
+                        squares[differentSquareIndex].style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+                        currentLevel++;
+                        generateLevel();
+                    }, 2000);
+                }
             }
         }
 
         function completeGame() {
             gameCompleted = true;
-            messageElement.textContent = '🎉 Поздравляем! Вы прошли все 50 уровней!';
-            messageElement.className = 'message complete';
-            restartBtn.style.display = 'inline-block';
             grid.style.display = 'none';
+            
+            if (errorCount >= maxErrors) {
+                messageElement.textContent = `🔴 Тест завершен: достигнуто ${maxErrors} ошибок`;
+            } else {
+                messageElement.textContent = '🎉 Поздравляем! Вы прошли все 50 уровней!';
+            }
+            messageElement.className = 'message complete';
+            
+            // Создаем диаграмму результатов
+            createResultsChart();
+            restartBtn.style.display = 'inline-block';
+        }
+
+        function createResultsChart() {
+            const chartContainer = document.createElement('div');
+            chartContainer.style.cssText = `
+                margin-top: 30px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 15px;
+                padding: 20px;
+                backdrop-filter: blur(10px);
+            `;
+            
+            const chartTitle = document.createElement('h3');
+            chartTitle.textContent = '📊 Результаты теста';
+            chartTitle.style.cssText = `
+                color: white;
+                text-align: center;
+                margin-bottom: 20px;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            `;
+            
+            const chartGrid = document.createElement('div');
+            chartGrid.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
+                max-height: 400px;
+                overflow-y: auto;
+            `;
+            
+            // Статистика
+            const stats = document.createElement('div');
+            const correctAnswers = testResults.filter(r => r.success).length;
+            const incorrectAnswers = testResults.filter(r => !r.success).length;
+            const minDifference = Math.min(...testResults.map(r => r.difference));
+            
+            stats.innerHTML = `
+                <h4 style="color: #ffeb3b; margin-bottom: 10px;">📈 Статистика:</h4>
+                <p style="color: white; margin: 5px 0;">✅ Правильных ответов: ${correctAnswers}</p>
+                <p style="color: white; margin: 5px 0;">❌ Ошибок: ${incorrectAnswers}</p>
+                <p style="color: white; margin: 5px 0;">🎯 Минимальное различие: ${minDifference}</p>
+                <p style="color: white; margin: 5px 0;">📊 Достигнутый уровень: ${currentLevel - 1}</p>
+            `;
+            
+            chartGrid.appendChild(stats);
+            
+            // Показываем ошибки
+            const errorResults = testResults.filter(r => !r.success);
+            if (errorResults.length > 0) {
+                const errorsContainer = document.createElement('div');
+                errorsContainer.innerHTML = '<h4 style="color: #f44336; margin-bottom: 10px;">❌ Цвета с ошибками:</h4>';
+                
+                errorResults.forEach((result, index) => {
+                    const errorItem = document.createElement('div');
+                    errorItem.style.cssText = `
+                        display: flex;
+                        align-items: center;
+                        margin: 8px 0;
+                        padding: 8px;
+                        background: rgba(244, 67, 54, 0.1);
+                        border-radius: 8px;
+                        border-left: 3px solid #f44336;
+                    `;
+                    
+                    errorItem.innerHTML = `
+                        <div style="width: 30px; height: 30px; background: ${result.baseColor}; margin-right: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3);"></div>
+                        <div style="width: 30px; height: 30px; background: ${result.differentColor}; margin-right: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3);"></div>
+                        <div style="color: white; font-size: 12px;">
+                            <div>Уровень ${result.level}</div>
+                            <div>Различие: ${result.difference}</div>
+                        </div>
+                    `;
+                    
+                    errorsContainer.appendChild(errorItem);
+                });
+                
+                chartGrid.appendChild(errorsContainer);
+            }
+            
+            // Показываем успешные цвета (последние несколько)
+            const successResults = testResults.filter(r => r.success).slice(-10);
+            if (successResults.length > 0) {
+                const successContainer = document.createElement('div');
+                successContainer.innerHTML = '<h4 style="color: #4caf50; margin-bottom: 10px;">✅ Последние успешные:</h4>';
+                
+                successResults.forEach((result, index) => {
+                    const successItem = document.createElement('div');
+                    successItem.style.cssText = `
+                        display: flex;
+                        align-items: center;
+                        margin: 8px 0;
+                        padding: 8px;
+                        background: rgba(76, 175, 80, 0.1);
+                        border-radius: 8px;
+                        border-left: 3px solid #4caf50;
+                    `;
+                    
+                    successItem.innerHTML = `
+                        <div style="width: 30px; height: 30px; background: ${result.baseColor}; margin-right: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3);"></div>
+                        <div style="width: 30px; height: 30px; background: ${result.differentColor}; margin-right: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3);"></div>
+                        <div style="color: white; font-size: 12px;">
+                            <div>Уровень ${result.level}</div>
+                            <div>Различие: ${result.difference}</div>
+                        </div>
+                    `;
+                    
+                    successContainer.appendChild(successItem);
+                });
+                
+                chartGrid.appendChild(successContainer);
+            }
+            
+            chartContainer.appendChild(chartTitle);
+            chartContainer.appendChild(chartGrid);
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(chartContainer, restartBtn);
         }
 
         function restartGame() {
             currentLevel = 1;
             gameCompleted = false;
+            errorCount = 0;
+            currentDifference = 30;
+            testResults = [];
+            consecutiveCorrect = 0;
+            
+            // Удаляем диаграмму результатов если она есть
+            const existingChart = document.querySelector('.container > div:not(.grid):not(.progress):not(.info):not(.level):not(.message)');
+            if (existingChart && existingChart !== restartBtn.parentElement) {
+                existingChart.remove();
+            }
+            
             restartBtn.style.display = 'none';
             grid.style.display = 'grid';
             progressBar.style.width = '0%';
