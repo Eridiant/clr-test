@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цветовой тест</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .info {
+            margin: 20px 0;
+            font-size: 1.2em;
+        }
+
+        .level {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 15px 0;
+            color: #ffeb3b;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 30px auto;
+            max-width: 300px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 15px;
+        }
+
+        .square {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 3px solid transparent;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .square:hover {
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .square:active {
+            transform: scale(0.95);
+        }
+
+        .message {
+            margin: 20px 0;
+            font-size: 1.3em;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        .success {
+            color: #4caf50;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .error {
+            color: #f44336;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .complete {
+            color: #ffeb3b;
+            font-size: 1.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .restart-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        @media (max-width: 480px) {
+            .square {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .grid {
+                max-width: 220px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Цветовой тест</h1>
+        <div class="info">Найдите квадрат отличающегося цвета</div>
+        <div class="level">Уровень: <span id="level">1</span> / 50</div>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div class="grid" id="grid">
+            <!-- Квадраты будут добавлены через JavaScript -->
+        </div>
+        
+        <div class="message" id="message">Кликните на отличающийся квадрат</div>
+        
+        <button class="restart-btn" id="restartBtn" onclick="restartGame()" style="display: none;">
+            🔄 Начать заново
+        </button>
+    </div>
+
+    <script>
+        let currentLevel = 1;
+        let differentSquareIndex = 0;
+        let gameCompleted = false;
+
+        const grid = document.getElementById('grid');
+        const levelElement = document.getElementById('level');
+        const messageElement = document.getElementById('message');
+        const restartBtn = document.getElementById('restartBtn');
+        const progressBar = document.getElementById('progressBar');
+
+        // Функция для преобразования RGB в HEX
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        // Функция для преобразования HEX в RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function generateLevel() {
+            if (currentLevel > 50) {
+                completeGame();
+                return;
+            }
+
+            // Очищаем сетку
+            grid.innerHTML = '';
+            
+            // Генерируем базовый цвет с учетом более равномерного восприятия
+            const baseR = 80 + Math.floor(Math.random() * 96); // 80-175
+            const baseG = 80 + Math.floor(Math.random() * 96); // 80-175
+            const baseB = 80 + Math.floor(Math.random() * 96); // 80-175
+            const baseColor = rgbToHex(baseR, baseG, baseB);
+            
+            // Прогрессивное уменьшение разности
+            let difference;
+            if (currentLevel <= 20) {
+                // Первые 20 уровней: от 30 до 15
+                difference = Math.round(30 - ((currentLevel - 1) / 19) * 15);
+            } else if (currentLevel <= 35) {
+                // Уровни 21-35: от 15 до 8
+                difference = Math.round(15 - ((currentLevel - 21) / 14) * 7);
+            } else {
+                // Последние 15 уровней: от 8 до 2
+                difference = Math.round(8 - ((currentLevel - 36) / 14) * 6);
+            }
+            
+            // Определяем, какой квадрат будет отличаться
+            differentSquareIndex = Math.floor(Math.random() * 9);
+            
+            // Логика изменения каналов в зависимости от уровня
+            let diffR = baseR;
+            let diffG = baseG;
+            let diffB = baseB;
+            
+            if (currentLevel <= 30) {
+                // Уровни 1-30: изменяем все три канала
+                const directionR = Math.random() < 0.5 ? 1 : -1;
+                const directionG = Math.random() < 0.5 ? 1 : -1;
+                const directionB = Math.random() < 0.5 ? 1 : -1;
+                
+                diffR = Math.max(20, Math.min(235, baseR + (difference * directionR)));
+                diffG = Math.max(20, Math.min(235, baseG + (difference * directionG)));
+                diffB = Math.max(20, Math.min(235, baseB + (difference * directionB)));
+                
+            } else if (currentLevel <= 42) {
+                // Уровни 31-42: изменяем два канала
+                const channels = [0, 1, 2]; // R, G, B
+                const selectedChannels = [];
+                
+                // Выбираем два случайных канала
+                for (let i = 0; i < 2; i++) {
+                    const randomIndex = Math.floor(Math.random() * channels.length);
+                    selectedChannels.push(channels[randomIndex]);
+                    channels.splice(randomIndex, 1);
+                }
+                
+                selectedChannels.forEach(channel => {
+                    const direction = Math.random() < 0.5 ? 1 : -1;
+                    if (channel === 0) {
+                        diffR = Math.max(20, Math.min(235, baseR + (difference * direction)));
+                    } else if (channel === 1) {
+                        diffG = Math.max(20, Math.min(235, baseG + (difference * direction)));
+                    } else {
+                        diffB = Math.max(20, Math.min(235, baseB + (difference * direction)));
+                    }
+                });
+                
+            } else {
+                // Уровни 43-50: изменяем один канал (самое сложное)
+                const colorChannel = Math.floor(Math.random() * 3);
+                const direction = Math.random() < 0.5 ? 1 : -1;
+                
+                if (colorChannel === 0) {
+                    diffR = Math.max(20, Math.min(235, baseR + (difference * direction)));
+                } else if (colorChannel === 1) {
+                    diffG = Math.max(20, Math.min(235, baseG + (difference * direction)));
+                } else {
+                    diffB = Math.max(20, Math.min(235, baseB + (difference * direction)));
+                }
+            }
+            
+            const differentColor = rgbToHex(diffR, diffG, diffB);
+            
+            // Создаем квадраты
+            for (let i = 0; i < 9; i++) {
+                const square = document.createElement('div');
+                square.className = 'square';
+                
+                if (i === differentSquareIndex) {
+                    square.style.backgroundColor = differentColor;
+                } else {
+                    square.style.backgroundColor = baseColor;
+                }
+                
+                square.addEventListener('click', () => handleSquareClick(i));
+                grid.appendChild(square);
+            }
+            
+            // Обновляем интерфейс
+            levelElement.textContent = currentLevel;
+            messageElement.textContent = 'Кликните на отличающийся квадрат';
+            messageElement.className = 'message';
+            
+            // Обновляем прогресс-бар
+            const progress = (currentLevel / 50) * 100;
+            progressBar.style.width = progress + '%';
+        }
+
+        function handleSquareClick(index) {
+            if (gameCompleted) return;
+            
+            if (index === differentSquareIndex) {
+                // Правильный ответ
+                messageElement.textContent = '✅ Правильно!';
+                messageElement.className = 'message success';
+                
+                currentLevel++;
+                
+                setTimeout(() => {
+                    generateLevel();
+                }, 1000);
+                
+            } else {
+                // Неправильный ответ
+                messageElement.textContent = '❌ Попробуйте еще раз';
+                messageElement.className = 'message error';
+                
+                // Подсветим правильный квадрат
+                const squares = grid.children;
+                squares[differentSquareIndex].style.border = '3px solid #ffeb3b';
+                squares[differentSquareIndex].style.boxShadow = '0 0 20px #ffeb3b';
+                
+                setTimeout(() => {
+                    squares[differentSquareIndex].style.border = '3px solid transparent';
+                    squares[differentSquareIndex].style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+                    messageElement.textContent = 'Кликните на отличающийся квадрат';
+                    messageElement.className = 'message';
+                }, 2000);
+            }
+        }
+
+        function completeGame() {
+            gameCompleted = true;
+            messageElement.textContent = '🎉 Поздравляем! Вы прошли все 50 уровней!';
+            messageElement.className = 'message complete';
+            restartBtn.style.display = 'inline-block';
+            grid.style.display = 'none';
+        }
+
+        function restartGame() {
+            currentLevel = 1;
+            gameCompleted = false;
+            restartBtn.style.display = 'none';
+            grid.style.display = 'grid';
+            progressBar.style.width = '0%';
+            generateLevel();
+        }
+
+        // Запускаем игру
+        generateLevel();
+    </script>
+</body>
+</html>
